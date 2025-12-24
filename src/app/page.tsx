@@ -13,7 +13,7 @@ export default function LandingPage() {
             <div className="bg-primary/10 p-2 rounded-xl">
               <MessageCircle size={24} className="text-primary" />
             </div>
-            <span>UnderBridge</span>
+            <span>Safe House</span>
           </div>
           
           <div className="flex items-center gap-6">

@@ -27,13 +27,13 @@ export default function DashboardLayout({
             <div className="bg-primary/10 p-2 rounded-xl">
               <MessageCircle size={24} className="text-primary" />
             </div>
-            <span>UnderBridge</span>
+            <span>Safe House</span>
           </Link>
 
           <div className="flex items-center gap-4">
-            <button className="p-2 text-text-muted hover:text-primary transition-colors">
+            <Link href="/dashboard/profile" className="p-2 text-text-muted hover:text-primary transition-colors">
               <User size={24} />
-            </button>
+            </Link>
             <button 
               onClick={handleSignOut}
               className="flex items-center gap-2 text-text-muted hover:text-accent transition-colors font-medium text-sm"

@@ -1,8 +1,9 @@
 'use server';
 
-import { createClient } from '@/api/supabase/server';
+import { createClient, createAdminClient } from '@/api/supabase/server';
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
+import { moderateContent, generateAIResponse } from '@/lib/ai';
 
 export async function createPost(formData: FormData) {
   const supabase = await createClient();
@@ -25,6 +26,14 @@ export async function createPost(formData: FormData) {
     throw new Error('Title and content are required');
   }
 
+  // AI Moderation
+  const moderation = await moderateContent(`${title}\n${content}`);
+  const isSelfHarm = moderation.categories.some(cat => cat.includes('self-harm'));
+
+  if (moderation.flagged && !isSelfHarm) {
+    throw new Error('Post content violates our community guidelines.');
+  }
+
   const { data, error } = await supabase.from('posts').insert({
     user_id: user.id,
     title,
@@ -39,6 +48,21 @@ export async function createPost(formData: FormData) {
     throw new Error('Failed to create post');
   }
 
+  // AI Intervention for self-harm posts
+  if (moderation.flagged && isSelfHarm) {
+    // Use Admin Client to post as AI (bypassing RLS)
+    const adminSupabase = createAdminClient();
+    const aiResponse = await generateAIResponse(content);
+
+    await adminSupabase.from('comments').insert({
+      post_id: data.id,
+      content: aiResponse,
+      is_ai: true,
+      user_id: null // AI has no user profile ID, or you can create a specific one
+    });
+  }
+
   revalidatePath('/dashboard');
-  redirect(`/dashboard/${data.id}`);
+  return { id: data.id };
 }
+

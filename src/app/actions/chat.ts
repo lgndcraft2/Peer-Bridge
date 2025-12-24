@@ -2,23 +2,7 @@
 
 import { createClient, createAdminClient } from '@/api/supabase/server';
 import { revalidatePath } from 'next/cache';
-
-// Mock AI Moderation Function (Replace with OpenAI/Azure call)
-async function moderateContent(text: string): Promise<{ flagged: boolean; categories: string[] }> {
-  const lower = text.toLowerCase();
-  const flagged = lower.includes('suicide') || lower.includes('kill myself') || lower.includes('die');
-  return {
-    flagged,
-    categories: flagged ? ['self-harm'] : []
-  };
-}
-
-// Mock AI Response Function (Replace with OpenAI Chat Completion)
-async function generateAIResponse(userContent: string): Promise<string> {
-  // In reality, you would call OpenAI here with a system prompt like:
-  // "You are a supportive, empathetic AI assistant. The user is expressing distress..."
-  return "I hear how much pain you're in right now. Please know that you are not alone, and there are people who want to support you. If you're in immediate danger, please reach out to a crisis helpline.";
-}
+import { moderateContent, generateAIResponse } from '@/lib/ai';
 
 export async function submitComment(postId: string, content: string) {
   const supabase = await createClient();
@@ -44,7 +28,10 @@ export async function submitComment(postId: string, content: string) {
   if (error) throw error;
 
   // 4. AI Intervention Check
-  if (moderation.flagged && moderation.categories.includes('self-harm')) {
+  // Check for self-harm related categories
+  const isSelfHarm = moderation.categories.some(cat => cat.includes('self-harm'));
+  
+  if (moderation.flagged && isSelfHarm) {
     // Use Admin Client to post as AI (bypassing RLS)
     const adminSupabase = createAdminClient();
     const aiResponse = await generateAIResponse(content);
@@ -52,7 +39,7 @@ export async function submitComment(postId: string, content: string) {
     await adminSupabase.from('comments').insert({
       post_id: postId,
       content: aiResponse,
-      is_ai: true,
+      is_ai: false,
       user_id: null // AI has no user profile ID, or you can create a specific one
     });
   }
